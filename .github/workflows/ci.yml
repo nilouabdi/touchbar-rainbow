@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  macos:
+    name: Build app and run tests (macOS)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Build
+        run: swift build -c release
+      - name: Unit and visual tests
+        run: RAINBOW_SNAPSHOT_DIR="$RUNNER_TEMP/snapshots" swift test
+      - name: Package app
+        run: make app
+      - name: Render preview
+        run: |
+          python3 -m pip install --quiet pillow
+          make preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TouchBarRainbow
+          path: |
+            build/TouchBarRainbow.app
+            docs/preview.png
+            docs/preview.gif
+
+  linux:
+    name: Core tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:5.10
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift build
+      - run: swift test
