@@ -30,9 +30,16 @@ final class RainbowView: NSView {
         }
     }
 
-    init(style: RainbowStyle) {
+    private var widthConstraint: NSLayoutConstraint?
+
+    init(style: RainbowStyle, initialWidth: CGFloat) {
         self.style = style
-        super.init(frame: NSRect(x: 0, y: 0, width: 600, height: 30))
+        super.init(frame: NSRect(x: 0, y: 0, width: initialWidth, height: 30))
+
+        translatesAutoresizingMaskIntoConstraints = false
+        let width = widthAnchor.constraint(equalToConstant: initialWidth)
+        width.isActive = true
+        widthConstraint = width
 
         // Layer-hosting: assign the layer before turning on wantsLayer.
         root.masksToBounds = true
@@ -93,11 +100,26 @@ final class RainbowView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if window != nil {
+        if let window {
+            NSLog("TouchBarRainbow: rainbow on screen, touch bar window width \(window.frame.width), item width \(bounds.width)")
             restartAnimation()
+            // Let the Touch Bar finish its layout, then grow into the free space.
+            DispatchQueue.main.async { [weak self] in self?.fillAvailableWidth() }
         } else {
             gradient.removeAnimation(forKey: Self.animationKey)
         }
+    }
+
+    /// Widens the rainbow to the space between its left edge and the end of the Touch Bar,
+    /// never wider than one colour cycle (the gradient layer is two cycles wide and slides by one).
+    private func fillAvailableWidth() {
+        guard let window, let widthConstraint else { return }
+        let left = convert(bounds, to: nil).minX
+        let available = floor(window.frame.width - left - 4)
+        let target = min(available, CGFloat(style.cycleWidth))
+        guard target >= 200, abs(target - widthConstraint.constant) > 1 else { return }
+        NSLog("TouchBarRainbow: widening rainbow from \(widthConstraint.constant) to \(target)")
+        widthConstraint.constant = target
     }
 
     private func restartAnimation() {

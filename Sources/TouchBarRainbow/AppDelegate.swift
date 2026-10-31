@@ -62,6 +62,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func refresh(force: Bool = false) {
         let show = DisplayPolicy.shouldShow(mode: settings.mode, frontmostBundleID: frontmostBundleID,
                                             matcher: settings.matcher)
+        NSLog("TouchBarRainbow: frontmost app \(frontmostBundleID ?? "none"), mode \(settings.mode.rawValue), show \(show)")
         if show {
             presenter.present(force: force)
         } else {

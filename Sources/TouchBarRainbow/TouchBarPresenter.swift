@@ -39,8 +39,12 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
     /// Shows the rainbow. Calling it again while shown does nothing unless `force` is set
     /// (needed after sleep, when the Touch Bar server may have restarted).
     func present(force: Bool = false) {
-        guard isAvailable else { return }
+        guard isAvailable else {
+            NSLog("TouchBarRainbow: system-modal Touch Bar API not available on this macOS")
+            return
+        }
         if isPresented && !force { return }
+        NSLog("TouchBarRainbow: presenting rainbow (force: \(force), esc: \(showEscKey))")
         if let old = touchBar {
             TBRDismissSystemModalTouchBar(old)
         }
@@ -55,6 +59,7 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
 
     func dismiss() {
         guard let bar = touchBar else { return }
+        NSLog("TouchBarRainbow: dismissing rainbow")
         TBRDismissSystemModalTouchBar(bar)
         touchBar = nil
         isPresented = false
@@ -73,16 +78,9 @@ final class TouchBarPresenter: NSObject, NSTouchBarDelegate {
             return item
         case ID.rainbow:
             let item = NSCustomTouchBarItem(identifier: identifier)
-            let view = RainbowView(style: style)
-            view.translatesAutoresizingMaskIntoConstraints = false
-            // Take all the space the Touch Bar offers, but never more than one colour cycle
-            // (the gradient layer is two cycles wide and slides by one).
-            let maxWidth = view.widthAnchor.constraint(lessThanOrEqualToConstant: CGFloat(style.cycleWidth))
-            let minWidth = view.widthAnchor.constraint(greaterThanOrEqualToConstant: 200)
-            let fill = view.widthAnchor.constraint(equalToConstant: CGFloat(style.cycleWidth))
-            fill.priority = .defaultLow
-            NSLayoutConstraint.activate([maxWidth, minWidth, fill])
-            view.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            // The Touch Bar hides an item that asks for more width than is free, so start with a
+            // width that always fits; RainbowView widens itself to the real free space once shown.
+            let view = RainbowView(style: style, initialWidth: showEscKey ? 900 : 980)
             item.view = view
             item.visibilityPriority = .high
             rainbowView = view
